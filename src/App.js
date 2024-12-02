@@ -11,6 +11,7 @@ import LeaveManagementPage from "./components/LeaveManagement";
 import HomePage from "./components/Home";
 import NotFound from "./components/NotFound";
 import PrivateRoute from "./components/PrivateRoute";
+import RoleRoute from "./components/RoleRoute";
 
 const App = () => {
   return (
@@ -29,8 +30,22 @@ const App = () => {
           <Route index element={<HomePage />} />
           <Route path="profile" element={<Profile />} />
           <Route path="cuti" element={<CutiPage />} />
-          <Route path="user-management" element={<UserManagementPage />} />
-          {/* <Route path="cuti-management" element={<LeaveManagementPage />} /> */}
+          <Route
+            path="user-management"
+            element={
+              <RoleRoute allowedRoles={["ADMIN"]}>
+                <UserManagementPage />
+              </RoleRoute>
+            }
+          />
+          {/* <Route
+            path="leave-management"
+            element={
+              <RoleRoute allowedRoles={["MANAGER"]}>
+                <LeaveManagementPage />
+              </RoleRoute>
+            }
+          /> */}
         </Route>
         <Route path="/logout" element={<LogoutPage />} />
         <Route path="*" element={<NotFound />} />

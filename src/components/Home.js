@@ -20,14 +20,14 @@ const HomePage = () => {
               <Row className="justify-content-center">
                 <Col md={6}>
                   <Link to="/dashboard/cuti">
-                    <Button variant="primary" block>
+                    <Button variant="primary" className="d-block w-100">
                       Ajukan Permohonan Cuti
                     </Button>
                   </Link>
                 </Col>
                 <Col md={6}>
                   <Link to="/dashboard/profile">
-                    <Button variant="success" block>
+                    <Button variant="success" className="d-block w-100">
                       Kelola Profile
                     </Button>
                   </Link>
