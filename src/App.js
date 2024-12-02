@@ -10,6 +10,7 @@ import UserManagementPage from "./components/UserManagement";
 import LeaveManagementPage from "./components/LeaveManagement";
 import HomePage from "./components/Home";
 import NotFound from "./components/NotFound";
+import PrivateRoute from "./components/PrivateRoute";
 
 const App = () => {
   return (
@@ -17,7 +18,14 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />}>
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        >
           <Route index element={<HomePage />} />
           <Route path="profile" element={<Profile />} />
           <Route path="cuti" element={<CutiPage />} />

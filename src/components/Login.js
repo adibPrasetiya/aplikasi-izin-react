@@ -1,17 +1,56 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [alert, setAlert] = useState({ type: "", message: "" });
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email === "user@example.com" && password === "password") {
-      navigate("/dashboard");
-    } else {
-      alert("Invalid credentials");
+
+    try {
+      const response = await axios.post(
+        "http://localhost:3001/api/v1/user/login",
+        { username, password },
+        { withCredentials: true }
+      );
+
+      // Mengambil pesan dari response body
+      const message = response.data;
+
+      // Mengambil token dari header Authorization
+      const token = response.headers["authorization"];
+
+      if (token) {
+        // Simpan token di localStorage
+        localStorage.setItem("authToken", token);
+
+        // Tampilkan alert sukses
+        setAlert({ type: "success", message: "Login successful!" });
+
+        // Arahkan ke dashboard setelah login
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 2000);
+      } else {
+        setAlert({
+          type: "danger",
+          message: "Token not found in response headers.",
+        });
+      }
+    } catch (error) {
+      // Tampilkan pesan error
+      const errorMessage =
+        error.response?.data || "Terjadi kesalahan saat mencoba login.";
+      setAlert({
+        type: "danger",
+        message: Array.isArray(errorMessage)
+          ? errorMessage.join(", ")
+          : JSON.stringify(errorMessage),
+      });
     }
   };
 
@@ -22,18 +61,23 @@ const Login = () => {
           <div className="card">
             <div className="card-body">
               <h3 className="text-center mb-4">Login</h3>
+              {alert.message && (
+                <div className={`alert alert-${alert.type}`}>
+                  {alert.message}
+                </div>
+              )}
               <form onSubmit={handleLogin}>
                 <div className="mb-3">
-                  <label htmlFor="email" className="form-label">
-                    Email
+                  <label htmlFor="username" className="form-label">
+                    Username
                   </label>
                   <input
-                    type="email"
+                    type="username"
                     className="form-control"
-                    id="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                   />
                 </div>
                 <div className="mb-3">
