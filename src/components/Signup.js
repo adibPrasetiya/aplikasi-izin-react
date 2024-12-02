@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Form, Button, Container, Alert, ProgressBar } from "react-bootstrap";
+import { Form, Button, Container, ProgressBar, Alert } from "react-bootstrap";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     name: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -11,14 +14,37 @@ const Signup = () => {
   });
 
   const [errors, setErrors] = useState({});
-  const [passwordStrength, setPasswordStrength] = useState(0); // Strength score from 0 to 100
+  const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPasswordStrength, setShowPasswordStrength] = useState(false);
   const [isSubmitEnabled, setIsSubmitEnabled] = useState(false);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [alert, setAlert] = useState({ type: "", message: "" });
 
+  const navigate = useNavigate();
+
+  // Load daftar semua departemen di awal halaman
   useEffect(() => {
-    // Cek apakah form valid dan password cukup kuat
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:3001/api/v1/departement/search"
+        );
+        setDepartmentOptions(response.data.data || []);
+      } catch (error) {
+        console.error("Error fetching department data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
+
+  // Validasi form dan kekuatan password
+  useEffect(() => {
     const formErrors = validateForm();
-    const passwordValid = passwordStrength >= 50; // Password dianggap kuat jika skor >= 50 (setara dengan 50% kekuatan)
+    const passwordValid = passwordStrength >= 50;
     setIsSubmitEnabled(Object.keys(formErrors).length === 0 && passwordValid);
   }, [formData, passwordStrength]);
 
@@ -35,6 +61,16 @@ const Signup = () => {
     }
   };
 
+  const handleDepartmentSelect = (e) => {
+    const selectedDepartment = departmentOptions.find(
+      (dept) => dept.departementId === e.target.value
+    );
+    setFormData({
+      ...formData,
+      department: selectedDepartment ? selectedDepartment.departementId : "",
+    });
+  };
+
   const calculatePasswordStrength = (password) => {
     let strength = 0;
     const lengthCheck = password.length > 6;
@@ -43,20 +79,20 @@ const Signup = () => {
     const hasNumbers = /\d/.test(password);
     const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-    // Menilai berdasarkan kriteria
-    if (lengthCheck) strength += 20; // panjang password lebih dari 6
-    if (hasUppercase) strength += 20; // ada huruf besar
-    if (hasLowercase) strength += 20; // ada huruf kecil
-    if (hasNumbers) strength += 20; // ada angka
-    if (hasSpecialChars) strength += 20; // ada karakter spesial
+    if (lengthCheck) strength += 20;
+    if (hasUppercase) strength += 20;
+    if (hasLowercase) strength += 20;
+    if (hasNumbers) strength += 20;
+    if (hasSpecialChars) strength += 20;
 
-    return strength; // Skor dari 0 hingga 100
+    return strength;
   };
 
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.name) newErrors.name = "Nama wajib diisi";
+    if (!formData.username) newErrors.username = "Nama wajib diisi";
     if (!formData.email) newErrors.email = "Email wajib diisi";
     if (!formData.password) newErrors.password = "Password wajib diisi";
     if (formData.password !== formData.confirmPassword)
@@ -67,15 +103,39 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const formErrors = validateForm();
     setErrors(formErrors);
 
     if (Object.keys(formErrors).length === 0) {
-      alert("Formulir berhasil dikirim");
-      // Proses pengiriman data ke backend bisa dilakukan di sini.
+      const reqBody = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        username: formData.username,
+        departementId: formData.department,
+      };
+      console.log(reqBody);
+      try {
+        const response = await axios.post(
+          "http://localhost:3001/api/v1/user",
+          reqBody
+        );
+        setAlert({
+          type: "success",
+          message: "Berhasil mendaftarkan pengguna baru",
+        });
+
+        setTimeout(() => {
+          navigate("/");
+        }, 2000);
+      } catch (error) {
+        const errorMessage =
+          error.response?.data || "Terjadi kesalahan saat mengirim data.";
+        setAlert({ type: "danger", message: errorMessage });
+      }
     }
   };
 
@@ -90,8 +150,16 @@ const Signup = () => {
   return (
     <Container>
       <h2 className="mt-4">Registrasi Pengguna</h2>
+      {alert.message && (
+        <Alert variant={alert.type} className="mt-3">
+          {Array.isArray(alert.message)
+            ? alert.message.join(", ")
+            : typeof alert.message === "object"
+            ? JSON.stringify(alert.message)
+            : alert.message}
+        </Alert>
+      )}
       <Form onSubmit={handleSubmit} className="mt-3">
-        {/* Name */}
         <Form.Group controlId="formName">
           <Form.Label>Nama</Form.Label>
           <Form.Control
@@ -107,7 +175,21 @@ const Signup = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        {/* Email */}
+        <Form.Group controlId="formUsername">
+          <Form.Label>Username</Form.Label>
+          <Form.Control
+            type="text"
+            placeholder="Masukkan usernama"
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            isInvalid={!!errors.username}
+          />
+          <Form.Control.Feedback type="invalid">
+            {errors.username}
+          </Form.Control.Feedback>
+        </Form.Group>
+
         <Form.Group controlId="formEmail">
           <Form.Label>Email</Form.Label>
           <Form.Control
@@ -123,7 +205,6 @@ const Signup = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        {/* Password */}
         <Form.Group controlId="formPassword">
           <Form.Label>Password</Form.Label>
           <Form.Control
@@ -139,7 +220,6 @@ const Signup = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        {/* Confirm Password */}
         <Form.Group controlId="formConfirmPassword">
           <Form.Label>Konfirmasi Password</Form.Label>
           <Form.Control
@@ -155,27 +235,30 @@ const Signup = () => {
           </Form.Control.Feedback>
         </Form.Group>
 
-        {/* Department */}
         <Form.Group controlId="formDepartment">
           <Form.Label>Departemen</Form.Label>
-          <Form.Control
-            as="select"
-            name="department"
-            value={formData.department}
-            onChange={handleInputChange}
-            isInvalid={!!errors.department}
-          >
-            <option value="">Pilih Departemen</option>
-            <option value="IT">IT</option>
-            <option value="HR">HR</option>
-            <option value="Finance">Finance</option>
-          </Form.Control>
+          {isLoading ? (
+            <div>Memuat...</div>
+          ) : (
+            <Form.Control
+              as="select"
+              value={formData.department}
+              onChange={handleDepartmentSelect}
+              isInvalid={!!errors.department}
+            >
+              <option value="">Pilih departemen</option>
+              {departmentOptions.map((dept) => (
+                <option key={dept.departementId} value={dept.departementId}>
+                  {dept.name}
+                </option>
+              ))}
+            </Form.Control>
+          )}
           <Form.Control.Feedback type="invalid">
             {errors.department}
           </Form.Control.Feedback>
         </Form.Group>
 
-        {/* Password Strength Meter */}
         {showPasswordStrength && (
           <div className="mt-3">
             <ProgressBar
@@ -185,22 +268,15 @@ const Signup = () => {
           </div>
         )}
 
-        {/* Submit Button */}
         <Button
           variant="primary"
           type="submit"
           className="mt-3"
-          disabled={!isSubmitEnabled} // Disable button if form is invalid or password is weak
+          disabled={!isSubmitEnabled}
         >
           Daftar
         </Button>
       </Form>
-
-      {Object.keys(errors).length === 0 && (
-        <Alert variant="success" className="mt-3">
-          Formulir valid dan siap dikirim!
-        </Alert>
-      )}
     </Container>
   );
 };
