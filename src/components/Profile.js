@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -7,53 +7,103 @@ import {
   Button,
   Modal,
   Form,
-  Nav,
-  Navbar,
 } from "react-bootstrap";
+import { getDecodedToken } from "../utils/decodeToken";
+import { formatDateToIndonesian } from "../utils/formatDateToIndonesia";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
-  const [profile, setProfile] = useState({
-    name: "Sami Rahman",
-    username: "sami123",
-    email: "sami.rahman2002@gmail.com",
-    role: "Administrator", // Added role
-    department: "IT Department",
-    passwordExpiration: "2024-12-01", // Date of password expiration
-    isActive: true, // User active status
-  });
+  const [profile, setProfile] = useState({});
   const [showUpdateProfileModal, setShowUpdateProfileModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [updatedName, setUpdatedName] = useState(profile.name);
-  const [updatedDepartment, setUpdatedDepartment] = useState(
-    profile.department
-  );
+  const [updatedName, setUpdatedName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [alert, setAlert] = useState({ type: "", message: "" });
 
-  const handleUpdateProfile = () => {
-    setProfile({
-      ...profile,
-      name: updatedName,
-      department: updatedDepartment,
-    });
-    setShowUpdateProfileModal(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const decodedToken = getDecodedToken();
+    if (decodedToken) {
+      setProfile({
+        name: decodedToken.name,
+        username: decodedToken.username,
+        email: decodedToken.email,
+        role: decodedToken.role,
+        department: decodedToken.departementName,
+        passwordExpiration: decodedToken.passwordExpiredAt,
+        isActive: decodedToken.flagActive,
+      });
+    }
+  }, []);
+
+  const handleUpdateProfile = async () => {
+    try {
+      const response = await axios.patch(
+        "http://localhost:3001/api/v1/user/current",
+        {
+          name: updatedName,
+          currentPassword: currentPassword,
+        },
+        {
+          headers: {
+            Authorization: localStorage.getItem("authToken"),
+          },
+        }
+      );
+      setAlert({ type: "success", message: response.data.data });
+      localStorage.removeItem("authToken");
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
+    } catch (error) {
+      const errorMessage =
+        error.response?.data.errors || "Error occured during profile update";
+      setAlert({ type: "danger", message: errorMessage });
+    }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       alert("Passwords do not match!");
       return;
     }
-    alert("Password updated successfully!");
-    setShowChangePasswordModal(false);
+    try {
+      const response = await axios.patch(
+        "http://localhost:3001/api/v1/user/current",
+        {
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        },
+        {
+          headers: {
+            Authorization: localStorage.getItem("authToken"),
+          },
+        }
+      );
+
+      setAlert({ type: "success", message: response.data.data });
+
+      localStorage.removeItem("authToken");
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
+    } catch (error) {
+      const errorMessage =
+        error.response?.data.errors || "Error occured during password update";
+      setAlert({ type: "danger", message: errorMessage });
+    }
   };
 
   return (
     <Container fluid>
       <Row className="mt-5">
         <Col md={4}>
-          {/* Profile Card */}
           <Card className="shadow-sm">
             <Card.Body>
               <div className="d-flex align-items-center mb-4">
@@ -96,7 +146,6 @@ const Profile = () => {
         </Col>
 
         <Col md={8}>
-          {/* Status of Password Expiration */}
           <Row>
             <Col md={6}>
               <Card className="shadow-sm mb-4">
@@ -111,13 +160,13 @@ const Profile = () => {
                   </Card.Text>
                   <Card.Text>
                     <strong>Expiration Date:</strong>{" "}
-                    {profile.passwordExpiration}
+                    {profile.passwordExpiration
+                      ? formatDateToIndonesian(profile.passwordExpiration)
+                      : "Not Available"}
                   </Card.Text>
                 </Card.Body>
               </Card>
             </Col>
-
-            {/* User Role and Active Status */}
             <Col md={6}>
               <Card className="shadow-sm mb-4">
                 <Card.Body>
@@ -136,7 +185,7 @@ const Profile = () => {
         </Col>
       </Row>
 
-      {/* Modal for updating profile */}
+      {/* Update Profile Modal */}
       <Modal
         show={showUpdateProfileModal}
         onHide={() => setShowUpdateProfileModal(false)}
@@ -145,6 +194,11 @@ const Profile = () => {
           <Modal.Title>Update Profile</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {alert.message && (
+            <div className={`alert alert-${alert.type} mt-2`}>
+              {alert.message}
+            </div>
+          )}
           <Form>
             <Form.Group controlId="updatedName">
               <Form.Label>Full Name</Form.Label>
@@ -155,14 +209,6 @@ const Profile = () => {
               />
             </Form.Group>
             <Form.Group controlId="updatedDepartment" className="mt-3">
-              <Form.Label>Department</Form.Label>
-              <Form.Control
-                type="text"
-                value={updatedDepartment}
-                onChange={(e) => setUpdatedDepartment(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group controlId="currentPassword" className="mt-3">
               <Form.Label>Current Password</Form.Label>
               <Form.Control
                 type="password"
@@ -185,7 +231,7 @@ const Profile = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Modal for updating password */}
+      {/* Change Password Modal */}
       <Modal
         show={showChangePasswordModal}
         onHide={() => setShowChangePasswordModal(false)}
@@ -194,6 +240,11 @@ const Profile = () => {
           <Modal.Title>Update Password</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {alert.message && (
+            <div className={`alert alert-${alert.type} mt-2`}>
+              {alert.message}
+            </div>
+          )}
           <Form>
             <Form.Group controlId="currentPassword" className="mt-3">
               <Form.Label>Current Password</Form.Label>
